@@ -58,8 +58,13 @@ async def health():
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     """Handle real-time chat via WebSocket."""
-    await ws.accept()
-    print(f"[WS] Connection accepted from {ws.client}")
+    print(f"[WS] Incoming connection request from {ws.client}")
+    try:
+        await ws.accept()
+        print(f"[WS] Connection accepted from {ws.client}")
+    except Exception as e:
+        print(f"[WS] Failed to accept connection: {e}")
+        return
     
     agent = create_browser_agent()
     thread_id = "web-session"

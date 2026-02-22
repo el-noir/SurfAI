@@ -21,10 +21,16 @@ function App() {
 
   useEffect(() => {
     const connect = () => {
+      let host = import.meta.env.VITE_WS_BACKEND_URL || (import.meta.env.DEV ? 'localhost:8000' : window.location.host);
+
+      // Clean up the host (strip protocol if accidentally included)
+      host = host.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
+
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Use VITE_WS_BACKEND_URL if provided, else fall back to local dev or current host
-      const host = import.meta.env.VITE_WS_BACKEND_URL;
-      const socket = new WebSocket(`${protocol}://${host}/ws`);
+      const wsUrl = `${protocol}://${host}/ws`;
+
+      console.log(`[WS] Attempting connection to: ${wsUrl}`);
+      const socket = new WebSocket(wsUrl);
 
       socket.onopen = () => setStatus('connected');
       socket.onclose = () => {
