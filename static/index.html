@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrowserAgent — AI Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a2e;
+      --bg-glass: rgba(26, 26, 46, 0.7);
+      --border: rgba(255, 255, 255, 0.06);
+      --border-glow: rgba(99, 102, 241, 0.3);
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --green: #22c55e;
+      --green-glow: rgba(34, 197, 94, 0.15);
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --cyan: #06b6d4;
+      --radius: 12px;
+      --radius-lg: 16px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff, var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--green-glow);
+      color: var(--green);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+    .status-badge.disconnected {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--red);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+    .status-badge.working {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--orange);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* --- Main Layout --- */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* --- Chat Panel --- */
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      border-right: 1px solid var(--border);
+    }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+    .messages::-webkit-scrollbar { width: 5px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+    /* Message bubbles */
+    .msg {
+      max-width: 85%;
+      animation: msg-in 0.3s ease-out;
+    }
+    @keyframes msg-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg.user {
+      align-self: flex-end;
+    }
+    .msg.agent {
+      align-self: flex-start;
+    }
+    .msg-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .msg.user .msg-label { text-align: right; }
+    .msg-bubble {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .msg.user .msg-bubble {
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.agent .msg-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Tool call chips */
+    .tool-group {
+      align-self: flex-start;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: msg-in 0.3s ease-out;
+    }
+    .tool-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: border-color 0.2s;
+    }
+    .tool-chip.success { border-color: rgba(34, 197, 94, 0.3); }
+    .tool-chip.error { border-color: rgba(239, 68, 68, 0.3); }
+    .tool-chip .icon { font-size: 14px; }
+    .tool-chip .name {
+      font-weight: 600;
+      color: var(--cyan);
+    }
+    .tool-chip .args {
+      color: var(--text-dim);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+    }
+
+    /* Thinking indicator */
+    .thinking-indicator {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-secondary);
+      animation: msg-in 0.3s ease-out;
+    }
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+    .thinking-dots span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      animation: bounce 1.4s infinite;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Done badge */
+    .done-badge {
+      align-self: center;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: var(--green-glow);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+      animation: msg-in 0.3s ease-out;
+    }
+
+    /* Error badge */
+    .error-badge {
+      align-self: flex-start;
+      padding: 10px 16px;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--red);
+      animation: msg-in 0.3s ease-out;
+    }
+
+    /* --- Input Bar --- */
+    .input-bar {
+      padding: 16px 24px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 4px 4px 4px 16px;
+      transition: border-color 0.2s;
+    }
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .input-wrapper input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      padding: 10px 0;
+    }
+    .input-wrapper input::placeholder { color: var(--text-dim); }
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, opacity 0.15s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { transform: scale(1.05); }
+    .send-btn:active { transform: scale(0.95); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* --- Browser Panel --- */
+    .browser-panel {
+      width: 45%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-secondary);
+      flex-shrink: 0;
+    }
+    .browser-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .browser-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .browser-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .browser-dots span:nth-child(1) { background: #ef4444; }
+    .browser-dots span:nth-child(2) { background: #f59e0b; }
+    .browser-dots span:nth-child(3) { background: #22c55e; }
+    .browser-title {
+      font-size: 13px;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    .browser-viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    .browser-viewport img {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      transition: opacity 0.3s;
+    }
+    .browser-placeholder {
+      text-align: center;
+      color: var(--text-dim);
+    }
+    .browser-placeholder .icon { font-size: 48px; margin-bottom: 12px; }
+    .browser-placeholder p { font-size: 14px; }
+
+    /* --- Welcome --- */
+    .welcome {
+      align-self: center;
+      text-align: center;
+      padding: 40px 20px;
+      animation: msg-in 0.5s ease-out;
+    }
+    .welcome .icon { font-size: 48px; margin-bottom: 16px; }
+    .welcome h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff, var(--accent-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .welcome p { color: var(--text-dim); font-size: 14px; line-height: 1.6; }
+    .welcome .examples {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .welcome .example-chip {
+      padding: 10px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .welcome .example-chip:hover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      color: var(--text-primary);
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 900px) {
+      .browser-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">🌐</div>
+      <div>
+        <h1>BrowserAgent</h1>
+        <span class="subtitle">AI Browser Automation</span>
+      </div>
+    </div>
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">Connected</span>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="main">
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="messages" id="messages">
+        <div class="welcome">
+          <div class="icon">🤖</div>
+          <h2>What can I help you with?</h2>
+          <p>I can navigate websites, click buttons, fill forms, and more — all by seeing the screen.</p>
+          <div class="examples">
+            <div class="example-chip" onclick="sendExample(this)">Navigate to google.com and search for 'LangGraph'</div>
+            <div class="example-chip" onclick="sendExample(this)">Go to Wikipedia and find the page about Artificial Intelligence</div>
+            <div class="example-chip" onclick="sendExample(this)">Visit github.com and check trending repositories</div>
+          </div>
+        </div>
+      </div>
+      <div class="input-bar">
+        <div class="input-wrapper">
+          <input type="text" id="userInput" placeholder="Tell me what to do..." autocomplete="off" />
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Browser Panel -->
+    <div class="browser-panel">
+      <div class="browser-header">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <span class="browser-title" id="browserTitle">Browser — Waiting for task</span>
+      </div>
+      <div class="browser-viewport" id="browserViewport">
+        <div class="browser-placeholder">
+          <div class="icon">🖥️</div>
+          <p>Live browser view will appear here</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const viewport = document.getElementById('browserViewport');
+    const browserTitle = document.getElementById('browserTitle');
+
+    let ws = null;
+    let isWorking = false;
+
+    function connect() {
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+      ws.onopen = () => setStatus('connected');
+      ws.onclose = () => {
+        setStatus('disconnected');
+        setTimeout(connect, 3000);
+      };
+      ws.onerror = () => setStatus('disconnected');
+      ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    }
+
+    function setStatus(state) {
+      statusBadge.className = 'status-badge' + (state === 'disconnected' ? ' disconnected' : state === 'working' ? ' working' : '');
+      statusText.textContent = state === 'connected' ? 'Connected' : state === 'working' ? 'Working...' : 'Disconnected';
+    }
+
+    function scrollBottom() {
+      messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+    }
+
+    function clearWelcome() {
+      const welcome = messagesEl.querySelector('.welcome');
+      if (welcome) welcome.remove();
+    }
+
+    function addUserMsg(text) {
+      clearWelcome();
+      const div = document.createElement('div');
+      div.className = 'msg user';
+      div.innerHTML = `<div class="msg-label">You</div><div class="msg-bubble">${escapeHtml(text)}</div>`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addAgentMsg(text) {
+      const div = document.createElement('div');
+      div.className = 'msg agent';
+      div.innerHTML = `<div class="msg-label">Agent</div><div class="msg-bubble">${escapeHtml(text)}</div>`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addToolCall(name, args) {
+      const argsStr = Object.entries(args).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
+      const div = document.createElement('div');
+      div.className = 'tool-group';
+      div.innerHTML = `<div class="tool-chip" id="tool-${Date.now()}">
+        <span class="icon">🔨</span>
+        <span class="name">${escapeHtml(name)}</span>
+        <span class="args">${escapeHtml(argsStr)}</span>
+      </div>`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addToolResult(name, content, success) {
+      const icon = success ? '✅' : '❌';
+      const cls = success ? 'success' : 'error';
+      const div = document.createElement('div');
+      div.className = 'tool-group';
+      div.innerHTML = `<div class="tool-chip ${cls}">
+        <span class="icon">${icon}</span>
+        <span class="args">${escapeHtml(content)}</span>
+      </div>`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addThinking() {
+      removeThinking();
+      const div = document.createElement('div');
+      div.className = 'thinking-indicator';
+      div.id = 'thinkingIndicator';
+      div.innerHTML = `<div class="thinking-dots"><span></span><span></span><span></span></div> Agent is thinking...`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function removeThinking() {
+      const el = document.getElementById('thinkingIndicator');
+      if (el) el.remove();
+    }
+
+    function addDone() {
+      const div = document.createElement('div');
+      div.className = 'done-badge';
+      div.innerHTML = '✓ Task completed';
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function addError(text) {
+      const div = document.createElement('div');
+      div.className = 'error-badge';
+      div.innerHTML = `⚠ Error: ${escapeHtml(text)}`;
+      messagesEl.appendChild(div);
+      scrollBottom();
+    }
+
+    function updateScreenshot(base64data) {
+      viewport.innerHTML = `<img src="data:image/jpeg;base64,${base64data}" alt="Browser screenshot" />`;
+      browserTitle.textContent = 'Browser — Live View';
+    }
+
+    function handleEvent(event) {
+      switch (event.type) {
+        case 'thinking':
+          removeThinking();
+          addAgentMsg(event.content);
+          break;
+        case 'tool_call':
+          removeThinking();
+          addToolCall(event.name, event.args);
+          addThinking();
+          break;
+        case 'tool_result':
+          removeThinking();
+          addToolResult(event.name, event.content, event.success);
+          addThinking();
+          break;
+        case 'screenshot':
+          updateScreenshot(event.data);
+          break;
+        case 'done':
+          removeThinking();
+          addDone();
+          setStatus('connected');
+          isWorking = false;
+          sendBtn.disabled = false;
+          inputEl.disabled = false;
+          inputEl.focus();
+          break;
+        case 'error':
+          removeThinking();
+          addError(event.content);
+          setStatus('connected');
+          isWorking = false;
+          sendBtn.disabled = false;
+          inputEl.disabled = false;
+          break;
+      }
+    }
+
+    function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text || isWorking || !ws || ws.readyState !== 1) return;
+
+      addUserMsg(text);
+      ws.send(JSON.stringify({ message: text }));
+      inputEl.value = '';
+      isWorking = true;
+      sendBtn.disabled = true;
+      inputEl.disabled = true;
+      setStatus('working');
+      addThinking();
+    }
+
+    function sendExample(el) {
+      inputEl.value = el.textContent;
+      sendMessage();
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    connect();
+  </script>
+</body>
+</html>

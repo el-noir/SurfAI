@@ -1,0 +1,23 @@
+[project]
+name = "browseragent"
+version = "0.1.0"
+description = "Atnoumous browser agent"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.130.0",
+    "langchain>=1.2.8",
+    "langchain-groq>=1.1.2",
+    "langchain-ollama>=1.0.1",
+    "langgraph>=1.0.7",
+    "lxml>=6.0.2",
+    "nest-asyncio>=1.6.0",
+    "playwright>=1.58.0",
+    "prompt-toolkit>=3.0.52",
+    "pydantic>=2.12.5",
+    "pytest-playwright>=0.7.2",
+    "python-dotenv>=1.2.1",
+    "rich>=14.3.2",
+    "uvicorn>=0.41.0",
+    "websockets>=16.0",
+]
