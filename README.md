@@ -9,7 +9,6 @@ Surf AI is a powerful browser automation agent built with **LangGraph** and **Vi
 - **Vision-Based Navigation**: The agent "sees" the screen using screenshots to interact with elements accurately.
 - **Natural Language Control**: Tell the agent what to do (e.g., "Search for LangGraph on Google") and watch it work.
 - **Real-Time Live View**: Watch the browser's actions in real-time through the React-based dashboard.
-- **Cross-Platform Ready**: Optimized for deployment on platforms like Railway (Backend) and Vercel/Netlify (Frontend).
 
 ## Project Structure 📂
 

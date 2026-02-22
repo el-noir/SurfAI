@@ -26,10 +26,12 @@ function App() {
       // Clean up the host (strip protocol if accidentally included)
       host = host.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '');
 
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      // Determine if we should use secure websockets
+      const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+      const protocol = isLocal ? 'ws' : 'wss';
       const wsUrl = `${protocol}://${host}/ws`;
 
-      console.log(`[WS] Attempting connection to: ${wsUrl}`);
+      console.log(`[WS] Attempting connection to: ${wsUrl} (derived from host: ${host})`);
       const socket = new WebSocket(wsUrl);
 
       socket.onopen = () => setStatus('connected');
