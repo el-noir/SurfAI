@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.agent import create_browser_agent, SYSTEM_PROMPT
 from src.browser_manager import browser_instance
@@ -22,6 +23,15 @@ async def lifespan(app: FastAPI):
     await browser_instance.close()
 
 app = FastAPI(title="BrowserAgent Chat", lifespan=lifespan)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Serve static files
 STATIC_DIR = Path(__file__).parent / "static"
