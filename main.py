@@ -11,9 +11,9 @@ async def main():
         task = " ".join(sys.argv[1:])
     else:
         console.print(Panel(
-            "Welcome to [bold cyan]BrowserAgent[/bold cyan]!\n"
+            "Welcome to [bold cyan]Surf AI[/bold cyan]!\n"
             "I can control your browser using Vision and LangGraph.",
-            title="[bold blue]BrowserAgent[/bold blue]",
+            title="[bold blue]Surf AI[/bold blue]",
             border_style="blue"
         ))
         task = console.input("[bold yellow]What should I do? [/bold yellow]")

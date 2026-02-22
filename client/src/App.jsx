@@ -23,7 +23,7 @@ function App() {
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
       // Use VITE_WS_BACKEND_URL if provided, else fall back to local dev or current host
-      const host = import.meta.env.VITE_WS_BACKEND_URL || (import.meta.env.DEV ? 'localhost:8000' : window.location.host);
+      const host = import.meta.env.VITE_WS_BACKEND_URL;
       const socket = new WebSocket(`${protocol}://${host}/ws`);
 
       socket.onopen = () => setStatus('connected');
