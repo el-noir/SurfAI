@@ -19,8 +19,21 @@ class BrowserManager:
 
     async def init_browser(self):
         """Initializes the playwright browser and page."""
-        if self.page:
+        # Check if browser is still alive
+        if self.page and self.browser and self.browser.is_connected():
             return
+        
+        # Clean up stale state if any
+        if self.browser:
+            try:
+                await self.browser.close()
+            except Exception:
+                pass
+        if self.playwright:
+            try:
+                await self.playwright.stop()
+            except Exception:
+                pass
             
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch(
@@ -131,6 +144,173 @@ class BrowserManager:
             return f"Current URL: {url}\nPage Title: {title}"
         except Exception:
             return "Could not retrieve page info"
+
+    async def hover(self, x: int, y: int) -> str:
+        """Hovers the mouse over the specified coordinates."""
+        await self.init_browser()
+        try:
+            x = max(0, min(x, self.viewport["width"]))
+            y = max(0, min(y, self.viewport["height"]))
+            await self.page.mouse.move(x, y)
+            await asyncio.sleep(0.5)
+            return f"Hovered at ({x}, {y})"
+        except Exception as e:
+            return f"Failed to hover at ({x}, {y}): {str(e)}"
+
+    async def right_click(self, x: int, y: int) -> str:
+        """Right-clicks at the specified coordinates."""
+        await self.init_browser()
+        try:
+            x = max(0, min(x, self.viewport["width"]))
+            y = max(0, min(y, self.viewport["height"]))
+            await self.page.mouse.click(x, y, button="right")
+            await asyncio.sleep(1)
+            return f"Right-clicked at ({x}, {y})"
+        except Exception as e:
+            return f"Failed to right-click at ({x}, {y}): {str(e)}"
+
+    async def double_click(self, x: int, y: int) -> str:
+        """Double-clicks at the specified coordinates."""
+        await self.init_browser()
+        try:
+            x = max(0, min(x, self.viewport["width"]))
+            y = max(0, min(y, self.viewport["height"]))
+            await self.page.mouse.dblclick(x, y)
+            await asyncio.sleep(1)
+            return f"Double-clicked at ({x}, {y})"
+        except Exception as e:
+            return f"Failed to double-click at ({x}, {y}): {str(e)}"
+
+    async def drag_and_drop(self, from_x: int, from_y: int, to_x: int, to_y: int) -> str:
+        """Drags from one position to another."""
+        await self.init_browser()
+        try:
+            await self.page.mouse.move(from_x, from_y)
+            await self.page.mouse.down()
+            await asyncio.sleep(0.2)
+            await self.page.mouse.move(to_x, to_y, steps=20)
+            await self.page.mouse.up()
+            await asyncio.sleep(0.5)
+            return f"Dragged from ({from_x}, {from_y}) to ({to_x}, {to_y})"
+        except Exception as e:
+            return f"Failed to drag: {str(e)}"
+
+    async def select_option(self, selector: str, value: str) -> str:
+        """Selects an option from a <select> dropdown by value or label."""
+        await self.init_browser()
+        try:
+            await self.page.select_option(selector, value, timeout=5000)
+            await asyncio.sleep(0.5)
+            return f"Selected '{value}' from '{selector}'"
+        except Exception as e:
+            return f"Failed to select option: {str(e)}"
+
+    async def extract_text(self) -> str:
+        """Extracts all visible text content from the current page."""
+        if not self.page:
+            return "No page loaded"
+        try:
+            text = await self.page.evaluate("() => document.body.innerText")
+            # Truncate to avoid overwhelming the LLM context
+            if len(text) > 3000:
+                text = text[:3000] + "\n\n... [truncated]"
+            return text
+        except Exception as e:
+            return f"Failed to extract text: {str(e)}"
+
+    async def open_new_tab(self, url: str = "") -> str:
+        """Opens a new browser tab, optionally navigating to a URL."""
+        await self.init_browser()
+        try:
+            new_page = await self.context.new_page()
+            self.page = new_page
+            if url:
+                if not url.startswith("http"):
+                    url = "https://" + url
+                await self.page.goto(url, wait_until="networkidle", timeout=30000)
+                await asyncio.sleep(1)
+                return f"Opened new tab and navigated to {url}"
+            return "Opened new blank tab"
+        except Exception as e:
+            return f"Failed to open new tab: {str(e)}"
+
+    async def switch_tab(self, index: int) -> str:
+        """Switches to a tab by its index (0-based)."""
+        await self.init_browser()
+        try:
+            pages = self.context.pages
+            if 0 <= index < len(pages):
+                self.page = pages[index]
+                await self.page.bring_to_front()
+                title = await self.page.title()
+                return f"Switched to tab {index}: {title} ({self.page.url})"
+            return f"Tab index {index} out of range. {len(pages)} tabs open."
+        except Exception as e:
+            return f"Failed to switch tab: {str(e)}"
+
+    async def close_tab(self) -> str:
+        """Closes the current tab and switches to the previous one."""
+        await self.init_browser()
+        try:
+            await self.page.close()
+            pages = self.context.pages
+            if pages:
+                self.page = pages[-1]
+                await self.page.bring_to_front()
+                return f"Closed tab. Now on: {self.page.url}"
+            return "Closed last tab. No tabs remaining."
+        except Exception as e:
+            return f"Failed to close tab: {str(e)}"
+
+    async def list_tabs(self) -> str:
+        """Lists all open tabs with their index, URL, and title."""
+        await self.init_browser()
+        try:
+            pages = self.context.pages
+            lines = []
+            for i, page in enumerate(pages):
+                title = await page.title()
+                current = " ← current" if page == self.page else ""
+                lines.append(f"[{i}] {title} ({page.url}){current}")
+            return "\n".join(lines) if lines else "No tabs open."
+        except Exception as e:
+            return f"Failed to list tabs: {str(e)}"
+
+    async def handle_dialog(self, accept: bool = True, text: str = "") -> str:
+        """Sets up a handler for the next browser dialog (alert/confirm/prompt)."""
+        await self.init_browser()
+        try:
+            async def on_dialog(dialog):
+                if text and dialog.type == "prompt":
+                    await dialog.accept(text)
+                elif accept:
+                    await dialog.accept()
+                else:
+                    await dialog.dismiss()
+            self.page.once("dialog", on_dialog)
+            action = "accept" if accept else "dismiss"
+            return f"Dialog handler set to {action}" + (f" with text '{text}'" if text else "")
+        except Exception as e:
+            return f"Failed to set dialog handler: {str(e)}"
+
+    async def set_file_input(self, selector: str, file_path: str) -> str:
+        """Sets a file on a file input element."""
+        await self.init_browser()
+        try:
+            await self.page.set_input_files(selector, file_path, timeout=5000)
+            return f"Set file '{file_path}' on '{selector}'"
+        except Exception as e:
+            return f"Failed to set file: {str(e)}"
+
+    async def wait_for_element(self, text: str, timeout: int = 5000) -> str:
+        """Waits for an element containing specific text to appear on the page."""
+        await self.init_browser()
+        try:
+            await self.page.get_by_text(text).first.wait_for(timeout=timeout)
+            return f"Element with text '{text}' found"
+        except Exception as e:
+            return f"Timed out waiting for '{text}': {str(e)}"
+
 
 # Global browser instance handled by tools
 browser_instance = BrowserManager()

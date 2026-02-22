@@ -100,8 +100,13 @@ async def websocket_endpoint(ws: WebSocket):
     
     except WebSocketDisconnect:
         pass
-    finally:
-        await browser_instance.close()
+    # Don't close the browser here — it should persist across sessions
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up browser on server shutdown."""
+    await browser_instance.close()
 
 
 if __name__ == "__main__":
