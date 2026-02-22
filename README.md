@@ -2,7 +2,7 @@
 
 Surf AI is a powerful browser automation agent built with **LangGraph** and **Vision-capable LLMs** (via Groq). It allows you to control a web browser using natural language, seeing the screen just like a human does.
 
-![Surf AI Interface](./client/public/screenshot.png)
+![Surf AI Interface](./client/public/image.png)
 
 ## Features 🚀
 
