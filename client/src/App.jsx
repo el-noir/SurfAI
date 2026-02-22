@@ -22,8 +22,8 @@ function App() {
   useEffect(() => {
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      // Use localhost:8000 for development, window.location.host for production
-      const host = import.meta.env.DEV ? 'localhost:8000' : window.location.host;
+      // Use VITE_WS_BACKEND_URL if provided, else fall back to local dev or current host
+      const host = import.meta.env.VITE_WS_BACKEND_URL || (import.meta.env.DEV ? 'localhost:8000' : window.location.host);
       const socket = new WebSocket(`${protocol}://${host}/ws`);
 
       socket.onopen = () => setStatus('connected');

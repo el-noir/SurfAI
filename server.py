@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.agent import create_browser_agent, SYSTEM_PROMPT
 from src.browser_manager import browser_instance
+from src.config import ALLOWED_ORIGINS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +28,7 @@ app = FastAPI(title="BrowserAgent Chat", lifespan=lifespan)
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for dev
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
