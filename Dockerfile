@@ -36,9 +36,6 @@ RUN uv sync --frozen
 RUN uv run playwright install chromium
 RUN uv run playwright install-deps chromium
 
-# Expose the default port
-EXPOSE 8000
-
 # Set headless mode for cloud
 ENV HEADLESS=true
 
