@@ -9,8 +9,10 @@ nest_asyncio.apply()
 class BrowserManager:
     """Manages the Playwright browser instance and provides high-level control methods."""
 
-    def __init__(self, headless: bool = False):
-        self.headless = headless
+    def __init__(self, headless: Optional[bool] = None):
+        # Default to headless in cloud (no GUI), allow override via env or param
+        env_headless = os.getenv("HEADLESS", "true").lower() == "true"
+        self.headless = headless if headless is not None else env_headless
         self.playwright = None
         self.browser = None
         self.context = None
@@ -41,7 +43,10 @@ class BrowserManager:
             args=[
                 "--disable-dev-shm-usage",
                 "--no-sandbox",
-                "--disable-blink-features=AutomationControlled"
+                "--disable-blink-features=AutomationControlled",
+                "--disable-gpu",
+                "--hide-scrollbars",
+                "--mute-audio"
             ]
         )
         self.context = await self.browser.new_context(
