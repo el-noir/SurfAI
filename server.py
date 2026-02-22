@@ -8,10 +8,20 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
+from contextlib import asynccontextmanager
 from src.agent import create_browser_agent, SYSTEM_PROMPT
 from src.browser_manager import browser_instance
 
-app = FastAPI(title="BrowserAgent Chat")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: logic before application starts
+    print("[SERVER] Starting up...")
+    yield
+    # Shutdown: logic after application stops
+    print("[SERVER] Shutting down...")
+    await browser_instance.close()
+
+app = FastAPI(title="BrowserAgent Chat", lifespan=lifespan)
 
 # Serve static files
 STATIC_DIR = Path(__file__).parent / "static"
@@ -23,13 +33,22 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 async def root():
     """Serve the chat UI."""
     index_path = STATIC_DIR / "index.html"
-    return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Chat UI not found</h1>", status_code=404)
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint for deployment platforms."""
+    return {"status": "ok", "port": os.getenv("PORT", "8000")}
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     """Handle real-time chat via WebSocket."""
     await ws.accept()
+    print(f"[WS] Connection accepted from {ws.client}")
     
     agent = create_browser_agent()
     thread_id = "web-session"
@@ -104,12 +123,8 @@ async def websocket_endpoint(ws: WebSocket):
     # Don't close the browser here — it should persist across sessions
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Clean up browser on server shutdown."""
-    await browser_instance.close()
-
-
 if __name__ == "__main__":
+    import uvicorn
     port = int(os.getenv("PORT", 8000))
-    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
+    print(f"[SERVER] Launching on port {port}...")
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False, log_level="info")
