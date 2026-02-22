@@ -171,5 +171,5 @@ if __name__ == "__main__":
         print(f"[SERVER] Invalid PORT '{port_str}', falling back to 8080")
         port = 8080
         
-    print(f"[SERVER] Launching on port {port}...")
-    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False, log_level="info")
+    print(f"[SERVER] Launching on port {port}... (0.0.0.0:{port})")
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False, log_level="debug", proxy_headers=True, forwarded_allow_ips="*")

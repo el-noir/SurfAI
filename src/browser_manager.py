@@ -5,7 +5,7 @@ import nest_asyncio
 from playwright.async_api import async_playwright
 from typing import Optional, Dict, Any
 
-nest_asyncio.apply()
+# nest_asyncio.apply()
 
 class BrowserManager:
     """Manages the Playwright browser instance and provides high-level control methods."""
