@@ -18,12 +18,30 @@ from src.config import ALLOWED_ORIGINS, DEBUG_CORS
 async def lifespan(app: FastAPI):
     # Startup: logic before application starts
     print("[SERVER] Starting up...")
+    
+    # Non-blocking browser startup
+    async def init_browser_bg():
+        try:
+            print("[SERVER] Initializing browser in background...")
+            await browser_instance.init_browser()
+            print("[SERVER] Browser initialized successfully.")
+        except Exception as e:
+            print(f"[SERVER] FAILED to initialize browser: {e}. App will still accept connections.")
+
+    async def heartbeat():
+        while True:
+            await asyncio.sleep(60)
+            print("[SERVER] Heartbeat: Process is alive and healthy.")
+
+    asyncio.create_task(init_browser_bg())
+    asyncio.create_task(heartbeat())
+    
     yield
     # Shutdown: logic after application stops
     print("[SERVER] Shutting down...")
     await browser_instance.close()
 
-app = FastAPI(title="BrowserAgent Chat", lifespan=lifespan)
+app = FastAPI(title="Surf AI Chat", lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -58,7 +76,11 @@ async def health():
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
     """Handle real-time chat via WebSocket."""
-    print(f"[WS] Incoming connection request from {ws.client}")
+    # Log incoming request details for debugging 502s
+    origin = ws.headers.get("origin", "Unknown")
+    host = ws.headers.get("host", "Unknown")
+    print(f"[WS] Incoming connection request from {ws.client}. Origin: {origin}, Host: {host}")
+    
     try:
         await ws.accept()
         print(f"[WS] Connection accepted from {ws.client}")
@@ -141,6 +163,13 @@ async def websocket_endpoint(ws: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
+    # Use a safe fallback for PORT to prevent crashes
+    port_str = os.getenv("PORT", "8080")
+    try:
+        port = int(port_str)
+    except (TypeError, ValueError):
+        print(f"[SERVER] Invalid PORT '{port_str}', falling back to 8080")
+        port = 8080
+        
     print(f"[SERVER] Launching on port {port}...")
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False, log_level="info")

@@ -34,14 +34,22 @@ function App() {
       console.log(`[WS] Attempting connection to: ${wsUrl} (derived from host: ${host})`);
       const socket = new WebSocket(wsUrl);
 
-      socket.onopen = () => setStatus('connected');
-      socket.onclose = () => {
+      socket.onopen = () => {
+        console.log(`[WS] Connection established successfully with: ${wsUrl}`);
+        setStatus('connected');
+      };
+      socket.onclose = (event) => {
+        console.log(`[WS] Connection closed. Code: ${event.code}, Reason: ${event.reason || 'None'}`);
         setStatus('disconnected');
         setTimeout(connect, 3000);
       };
-      socket.onerror = () => setStatus('disconnected');
+      socket.onerror = (error) => {
+        console.error(`[WS] Connection error occurred:`, error);
+        setStatus('disconnected');
+      };
 
       socket.onmessage = (e) => {
+        console.log(`[WS] Message received:`, e.data.substring(0, 100) + '...');
         const event = JSON.parse(e.data);
         handleEvent(event);
       };
